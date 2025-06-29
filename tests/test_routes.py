@@ -14,7 +14,6 @@ from service.models import db, Account, init_db
 from service.routes import app
 from service import talisman
 
-
 DATABASE_URI = os.getenv(
     "DATABASE_URI", "postgresql://postgres:postgres@localhost:5432/postgres"
 )
@@ -23,6 +22,7 @@ BASE_URL = "/accounts"
 
 # Add this line as per exercise instructions
 HTTPS_ENVIRON = {'wsgi.url_scheme': 'https'}
+
 
 ######################################################################
 #  T E S T   C A S E S
@@ -39,6 +39,7 @@ class TestAccountService(TestCase):
         app.logger.setLevel(logging.CRITICAL)
         init_db(app)
 
+        # Disable forced https for testing
         talisman.force_https = False
 
     @classmethod
@@ -234,3 +235,13 @@ class TestAccountService(TestCase):
         }
         for key, value in headers.items():
             self.assertEqual(response.headers.get(key), value)
+
+    ######################################################################
+    #  C O R S   H E A D E R   T E S T
+    ######################################################################
+
+    def test_cors_security(self):
+        """It should return a CORS header"""
+        response = self.client.get('/', environ_overrides=HTTPS_ENVIRON)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.headers.get('Access-Control-Allow-Origin'), '*')
