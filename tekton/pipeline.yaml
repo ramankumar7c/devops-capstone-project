@@ -2,6 +2,9 @@
 # This pipeline needs the following tasks from Tekton Hub
 #   - git-clone
 #   - flake8
+#   - nose
+#   - buildah (ClusterTask)
+#   - openshift-client (ClusterTask)
 #
 ---
 apiVersion: tekton.dev/v1beta1
@@ -15,7 +18,7 @@ spec:
     - name: repo-url
     - name: branch
       default: main
-    - name: build-image  # ⬅️ new parameter added here
+    - name: build-image
   tasks:
     - name: init
       workspaces:
@@ -79,3 +82,22 @@ spec:
       runAfter:
         - tests
         - lint
+
+    - name: deploy
+      workspaces:
+        - name: manifest-dir
+          workspace: pipeline-workspace
+      taskRef:
+        name: openshift-client
+        kind: ClusterTask
+      params:
+        - name: SCRIPT
+          value: |
+            echo "Updating manifest..."
+            sed -i "s|IMAGE_NAME_HERE|$(params.build-image)|g" deploy/deployment.yaml
+            cat deploy/deployment.yaml
+            echo "Deploying to OpenShift..."
+            oc apply -f deploy/
+            oc get pods -l app=accounts
+      runAfter:
+        - build
